@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        {% load static %}
+        <meta charset="UTF-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Fetching Location</title>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+        <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    </head>
+
+    <body>
+        <button id="share">Share Location</button>
+            <h1>Location Details</h1>
+            <p>Latitude: <span id="latitude"></span></p>
+            <p>Longitude: <span id="longitude"></span></p>
+            <p>Address: <span id="address"></span></p> 
+        <div id="map" style="width: 100%; height: 400px;"></div>
+
+
+        <script>
+          function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        // Does this cookie string begin with the name we want?
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            const csrftoken = getCookie('csrftoken');
+            $(document).ready(function () {
+                // Initialize the map
+                
+                // Function to update the marker position
+                function loadMap(lat, lon) {
+                    var map = L.map('map').setView([lat,lon],13);
+
+                    // Add the tile layer
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors',
+                        maxZoom: 18,
+                    }).addTo(map);
+
+                    // Add the marker
+                    var marker;
+                    if (marker) {
+                        marker.setLatLng([lat, lon]).update();
+                    } else {
+                        marker = L.marker([lat, lon]).addTo(map);
+                    }
+                }
+
+                $('#share').on('click', function () {
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            function (position) {
+                                var latitude = position.coords.latitude;
+                                var longitude = position.coords.longitude;
+
+                                $('#latitude').text(latitude);
+                                $('#longitude').text(longitude);
+                                loadMap(latitude, longitude);
+
+                                // Make AJAX request to your Django view
+                                var url = '/get_location/';
+                                var data = {  latitude: latitude, longitude: longitude };
+                                $.ajax({
+                                    url: url,
+                                    type: 'POST',
+                                    headers: { 'X-CSRFToken': csrftoken },
+                                    dataType: 'json',
+                                    data: JSON.stringify(data),
+                                    contentType: 'application/json',
+                                    success: function (response) {
+                                        console.log('Coordinates sent successfully');
+                                        $('#address').text(response.address);
+                                    },
+                                    error: function () {
+                                        console.log('Error sending coordinates');
+                                    }
+                                });
+                            },
+                            function (error) {
+                                alert(error.message);
+                            }
+                        );
+                    } else {
+                        alert('Geolocation is not supported by your browser.');
+                    }
+                });
+            });
+        </script>
+        <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
+
+    </body>
+
+</html>
